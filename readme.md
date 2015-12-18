@@ -5,7 +5,7 @@ Software license: Academic Free License (AFL) [see afl-3.0.txt]
 
 Manifest: [see manifest.sha1sum]
 
-http://cnet.fi.uba.ar/
+http://cnet.fi.uba.ar/en
 
 **Developers:**
   * Mauricio Anderson Ricci (b)
