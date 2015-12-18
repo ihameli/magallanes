@@ -23,7 +23,7 @@ Developers: Mauricio Anderson Ricci (b)
 """
 
 from xmlrpclib import ServerProxy
-from os import system, getcwd
+from os import system, getcwd, path, makedirs
 from os.path import exists, dirname, abspath
 from sys import exit
 from imp import find_module
@@ -76,6 +76,10 @@ def checkStart():
         for x in archivosNoEncontrados:
             print '   ', x
         print '\n'
+
+    # CHECKING FOLDERS
+    if not path.exists(dirname(abspath(__file__)) + '/temp'):
+        makedirs(dirname(abspath(__file__)) + '/temp')
 
     # CHECKING LIBRARIES
     bibliotecas = set(['xmlrpclib', 'psycopg2', 'netaddr', 'json', 'pexpect', 'geoip2'])
