@@ -539,7 +539,7 @@ def instalarAnalisis_B2B(parametros):
                 if call([comando], shell=True) == 0:
                     instalacion = True
                     break
-            else:
+                else:
                     break
 
             else:
