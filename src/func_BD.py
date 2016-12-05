@@ -43,8 +43,8 @@ with open(archivo_conf) as f:
     for line in f:
         (key, value) = line.split(':')
         value = value.rstrip('\n')
-        value = ''.join(e for e in value if e!=' ') 
-        key = ''.join(e for e in key if e!=' ')         
+        value = ''.join(e for e in value if e!=' ')
+        key = ''.join(e for e in key if e!=' ')
         config[key] = value
 
 ###############################################################################
@@ -80,7 +80,7 @@ def checkDB():
         try:
             cursor.execute("""CREATE TABLE IF NOT EXISTS analysis    (usr            varchar(50),
                                                                      slice_name      varchar(50),
-                                                                     description     varchar(50),
+                                                                     description     text,
                                                                      analysis_id     smallint primary key,
                                                                      num_nodes       int,
                                                                      nodes           text,
@@ -119,17 +119,17 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""DELETE FROM analysis CASCADE WHERE stored IS NULL;""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""DELETE FROM analysis CASCADE WHERE stored IS NULL;""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_analysis ON analysis(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_analysis ON analysis(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'nodes_working': Node in which there is a process running
         try:
@@ -146,11 +146,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_nodes_working ON nodes_working(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_nodes_working ON nodes_working(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'traceroutes': Result of traceroutes obtained from an exploration
         try:
@@ -166,6 +166,7 @@ def checkDB():
                                                                      stop_data       smallint,
                                                                      TS              timestamp,
                                                                      TS_epoch        int,
+																	 path            text,
                                                                      primary key(analysis_id, trace_id));""")
             conexion.commit()
         except DatabaseError:
@@ -179,17 +180,17 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_traceroutes ON traceroutes(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_traceroutes ON traceroutes(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_traceroutes_trace ON traceroutes(trace_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_traceroutes_trace ON traceroutes(trace_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'hops': Result of hops obtained from an exploration
         try:
@@ -217,24 +218,24 @@ def checkDB():
             conexion.rollback()
 
         try:
-            cursor.execute("""ALTER TABLE hops add constraint FK_to_traceroutes foreign key (trace_id) references traceroutes(trace_id)
+            cursor.execute("""ALTER TABLE hops add constraint FK_to_traceroutes foreign key (analysis_id) references analysis(analysis_id)
                                    on update cascade
                                    on delete cascade;""")
             conexion.commit()
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_hops ON hops(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_hops ON hops(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_hops_trace ON hops(trace_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_hops_trace ON hops(trace_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'ping': Result of ping obtained from an exploration
         try:
@@ -261,11 +262,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_ping ON ping(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_ping ON ping(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'alias_resolution': Root table for alias resolution
         try:
@@ -297,11 +298,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_alias_resolution ON alias_resolution(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_alias_resolution ON alias_resolution(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'routers': Definition of routes related to a alias resolution process
         try:
@@ -329,11 +330,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_routers ON routers(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_routers ON routers(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'interfaces': Definition of interfaces of routers related to a alias resolution process
         try:
@@ -352,11 +353,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_interfaces ON interfaces(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_interfaces ON interfaces(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'ip_found': All IPs found in an exploration
         try:
@@ -374,11 +375,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_ip_found ON ip_found(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_ip_found ON ip_found(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'ip_resolucion': IPs which are being resolving in a remote node
         try:
@@ -397,11 +398,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_ip_resolution ON ip_resolution(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_ip_resolution ON ip_resolution(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'ip_metodo_midar': The prefered method found for each IP in the estimation stage of the MIDAR
         try:
@@ -420,11 +421,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_ip_metodo_midar ON ip_metodo_midar(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_ip_metodo_midar ON ip_metodo_midar(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'links_IP': Links found at IP level
         try:
@@ -443,11 +444,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_links_IP ON links_IP(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_links_IP ON links_IP(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'links': Links found at Router level
         try:
@@ -466,11 +467,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_links ON links(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_links ON links(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'planetlab_nodes'
         try:
@@ -487,11 +488,11 @@ def checkDB():
         except DatabaseError:
             conexion.rollback()
 
-        try:
-            cursor.execute("""CREATE INDEX Index_planetlab_nodes ON planetlab_nodes(analysis_id);""")
-            conexion.commit()
-        except DatabaseError:
-            conexion.rollback()
+        #try:
+        #    cursor.execute("""CREATE INDEX Index_planetlab_nodes ON planetlab_nodes(analysis_id);""")
+        #    conexion.commit()
+        #except DatabaseError:
+        #    conexion.rollback()
 
         # 'address_block_ipv4'
         try:
@@ -661,16 +662,23 @@ def registrarAnalisis(parametros):
                     loop_action, ping_type, ping_sent, ping_ttl) =  """ + str(datos) + ' where analysis_id=' + str(parametros.get('analysis_id')) + ';')
 
         else:
+			if parametros.get('trace_type') != 'B2B':
+				datos = (parametros.get('slice_name'), parametros.get('descripcion'), len(parametros.get('nodos_origen')), '|'.join(parametros.get('nodos_origen')),
+						len(parametros.get('nodos_destino')[0]), common_dest, destinos, asctime(gmtime(time())), int(time()), parametros.get('periodo_traceroutes'),
+						parametros.get('duracion_traceroutes'), parametros.get('pps'), parametros.get('wait'), parametros.get('trace_type'),
+						parametros.get('recalcular_TTL'), parametros.get('tiempo_recalculo_TTL'), 'n', '0', parametros.get('gaplimit'),
+						parametros.get('max_loops'), parametros.get('loop_action'))
 
-            datos = (parametros.get('slice_name'), parametros.get('descripcion'), len(parametros.get('nodos_origen')), '|'.join(parametros.get('nodos_origen')),
-                    len(parametros.get('nodos_destino')[0]), common_dest, destinos, asctime(gmtime(time())), int(time()), parametros.get('periodo_traceroutes'),
-                    parametros.get('duracion_traceroutes'), parametros.get('pps'), parametros.get('wait'), parametros.get('trace_type'),
-                    parametros.get('recalcular_TTL'), parametros.get('tiempo_recalculo_TTL'), 'n', '0', parametros.get('gaplimit'),
-                    parametros.get('max_loops'), parametros.get('loop_action'))
+				cursor.execute("""UPDATE analysis SET (slice_name, description, num_nodes, nodes, num_dest, common_dest, nodes_dest, TS, TS_epoch,
+						period, duration, pps, wait, trace_type, recalculation_TTL, recalculation_time, stored, topology_state, gap_limit, max_loops,
+						loop_action) =  """ + str(datos) + ' where analysis_id=' + str(parametros.get('analysis_id')) + ';')
+			else:
+				datos = (parametros.get('slice_name'), parametros.get('descripcion'), len(parametros.get('nodos_origen')), '|'.join(parametros.get('nodos_origen')),
+						len(parametros.get('nodos_destino')[0]), common_dest, destinos, asctime(gmtime(time())), int(time()),
+						parametros.get('duracion_traceroutes'), parametros.get('trace_type'), 'n', '0')
 
-            cursor.execute("""UPDATE analysis SET (slice_name, description, num_nodes, nodes, num_dest, common_dest, nodes_dest, TS, TS_epoch,
-                    period, duration, pps, wait, trace_type, recalculation_TTL, recalculation_time, stored, topology_state, gap_limit, max_loops,
-                    loop_action) =  """ + str(datos) + ' where analysis_id=' + str(parametros.get('analysis_id')) + ';')
+				cursor.execute("""UPDATE analysis SET (slice_name, description, num_nodes, nodes, num_dest, common_dest, nodes_dest, TS, TS_epoch,
+						duration, trace_type, stored, topology_state) =  """ + str(datos) + ' where analysis_id=' + str(parametros.get('analysis_id')) + ';')
 
 
         datos = []
@@ -753,7 +761,7 @@ def confirmar(texto):
     """ Request confirmation """
 
     while True:
-        conf = raw_input('\n' + texto + '? (y/n:\t ')
+        conf = raw_input('\n' + texto + '? (y/n):\t ')
         if conf.lower() == 'y' or conf.lower() == 'n':
             break
             print '\n'
@@ -853,7 +861,7 @@ def almacenar_mediciones_BD(auth, slice_name, ID, nodos_almacenar, sudoPassword 
 
                             if lineas:
 
-                                lineas_por_bloque = min(10 * 1000, lineas / 100)
+                                lineas_por_bloque = min(30 * 1000, lineas / 100)
 
                                 # Number of registers to store by time
                                 cant_bloque_enteros = lineas / lineas_por_bloque
@@ -931,7 +939,8 @@ def almacenar_mediciones_BD(auth, slice_name, ID, nodos_almacenar, sudoPassword 
                                 while ejecutar:
 
                                     # Percentage of progress
-                                    stdout.write('\r\tCompleted..............'+str(nro_bloque)+'/'+str(cant_bloque_total))
+                                    pct = (nro_bloque*100.0)/cant_bloque_total
+                                    stdout.write('\r\tComplete .............. %d/100' % pct)
                                     stdout.flush()
 
                                     # Read traceroutes in the block
@@ -1102,6 +1111,167 @@ def almacenar_mediciones_BD(auth, slice_name, ID, nodos_almacenar, sudoPassword 
         print 'ERROR:\n %s' % str(e)
         pass
 
+    finally:
+        vaciarTemp()
+        if len(nodos_preparados) == len(nodos_almacenar):
+            status = True
+        else:
+            status = False
+
+    cursor.close()
+    conexion.close()
+
+    return status
+
+def almacenar_mediciones_B2B_BD(auth, slice_name, ID, nodos_almacenar, sudoPassword = None):
+    """ Store in DB the data of exploration in the nodes <nodos_almacenar> """
+
+    user = auth.get('Username')
+
+    nro_nodo = 0
+    total_nodos = len(nodos_almacenar)
+    nodos_preparados = []
+
+    conexion = connect(conectar_BD())
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute('SELECT max(trace_id) FROM traceroutes WHERE analysis_id=%s;' % ID)
+        try:
+            last_trace_id = int(cursor.fetchall()[0][0]) + 1
+        except:
+            last_trace_id = 1
+
+        for nodo in nodos_almacenar:
+            try:
+                nro_nodo += 1
+                print '\n\tNode ' + str(nro_nodo) + '/' + str(total_nodos) + ': ', nodo + '\n'
+
+                vaciarTemp()
+
+                print 'Copying files of results\n'
+                comando = 'scp '+slice_name+'@'+nodo+':/home/'+slice_name+'/pamplona/resultados.tar.gz ' + directorio + '/temp/'
+                call([comando], shell=True)
+
+                if exists(directorio + '/temp/resultados.tar.gz'):
+                    print '\nDecompressing files'
+                    proceso = Popen(['cd ' + directorio + '/temp/; tar -zxf ' + directorio + '/temp/resultados.tar.gz'], shell=True)
+                    proceso.wait()
+
+                    if exists(directorio + '/temp/resultados_general.csv'):
+
+                        print '\nWriting data'
+
+                        trace = set()
+                        hops = set()
+
+                        # TRACEROUTE DATA
+                        stdout.write('\r\tTraceroutes data:\t')
+                        stdout.flush()
+                        with open(directorio + '/temp/resultados_general.csv', 'r') as f:
+
+                            countrdr = csv.DictReader(f, delimiter='\t')
+                            numRegistros = len(list(countrdr))
+                            n = 0
+                            p_last = -1
+                            f.seek(0)
+
+                            reader = csv.DictReader(f, delimiter='\t')
+                            for x in reader:
+                                n += 1
+                                try:
+                                    p = str((float(n) / numRegistros) * 100)[:4]
+                                except:    
+                                    p = '0'
+
+                                if p != p_last:
+                                    stdout.write('\r\tTraceroutes data:\t %s%s' % (p,'%'))
+                                    stdout.flush()
+                                    P_last = p
+                                
+                                cursor.execute("INSERT INTO traceroutes (analysis_id, trace_id, src, dst, ts_epoch, path) VALUES (%s,%s,'%s','%s',%s,'%s')" % (ID, int(x.get('trace_id')) + last_trace_id, x.get('src'), x.get('dst'), x.get('ts_epoch'), x.get('path')) )
+
+                            f.close()
+
+                        # HOPS DATA
+                        stdout.write('\n\r\tHops data:\t\t')
+                        stdout.flush()
+                        with open(directorio + '/temp/resultados_hops.csv', 'r') as f:
+
+                            countrdr = csv.DictReader(f, delimiter='\t')
+                            numRegistros = len(list(countrdr))
+                            n = 0
+                            p_last = -1
+                            f.seek(0)
+
+                            reader = csv.DictReader(f, delimiter='\t')
+                            for x in reader:
+                                n += 1
+                                try:
+                                    p = str((float(n) / numRegistros) * 100)[:4]
+                                except:    
+                                    p = '0'
+
+                                if p != p_last:
+                                    stdout.write('\r\tHops data:\t\t %s%s' % (p,'%'))
+                                    stdout.flush()
+                                    P_last = p
+
+                                cursor.execute("INSERT INTO hops (analysis_id, trace_id, hop_n, hop_ip, rtt, reply_ttl) VALUES (%s,%s,%s,'%s',%s,%s)" % (ID, int(x.get('trace_id')) + last_trace_id, x.get('hop_n'), x.get('hop_ip'), x.get('rtt'), x.get('reply_ttl')) )
+
+                            f.close()
+
+                        cursor.execute('SELECT nodes_stored FROM analysis WHERE analysis_id=\'' + ID + '\';')
+                        aux = cursor.fetchall()[0][0]
+                        try:
+                            aux = aux + '|' + nodo
+                        except:
+                            aux = nodo
+
+                        cursor.execute('SELECT max(trace_id) FROM traceroutes WHERE analysis_id=%s;' % ID)
+                        try:
+                            last_trace_id = int(cursor.fetchall()[0][0]) + 1
+                        except:
+                            last_trace_id = 1
+
+                        cursor.execute('UPDATE analysis SET nodes_stored=\''+str(aux)+'\' WHERE analysis_id=\'' + ID + '\';')
+                        cursor.execute('UPDATE analysis SET last_trace_id=\''+str(last_trace_id)+'\' WHERE analysis_id=\'' + ID + '\';')
+                        cursor.execute('DELETE FROM nodes_working WHERE node=\''+str(nodo)+'\' AND analysis_id=\'' + ID + '\';')
+
+                        conexion.commit()
+                        
+                        command = 'parallel-ssh -H ' + str(nodo) + ' -l ' + slice_name + ' ' + 'sudo rm /home/'+slice_name+'/pamplona/resultados.tar.gz'
+                        proceso = Popen([command], shell=True, stdout=PIPE)
+                        basura = proceso.stdout.readlines()
+                        proceso.stdout.close()
+
+                        nodos_preparados.append(nodo)
+
+                        print '\n\t\tStored successful!\n'
+
+                    else:
+                        print '\nDecompressed file not found'
+
+                else:
+                    print '\nFile not found'
+
+            except KeyboardInterrupt:
+                conexion.rollback()
+                if confirmar('Continue to next node'):
+                    pass
+                else:
+                    raise
+
+            except DatabaseError as e:
+                print 'Error: %s' % str(e)
+                conexion.rollback()
+                raise
+
+    except KeyboardInterrupt:
+        pass
+
+    except Exception as e:
+        print 'ERROR:\n %s' % str(e)
     finally:
         vaciarTemp()
         if len(nodos_preparados) == len(nodos_almacenar):

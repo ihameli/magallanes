@@ -133,7 +133,9 @@ def admin(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_ssh,
                  print color.UNDERLINE + 'Main menu: Administration: Install software:' + color.END
                  print '1: View instalation state'
                  print '2: Install in specific nodes'
-                 print '3: Install in all nodes'
+                 print '3: Install in nodes without scamper'
+                 print '4: Install in all nodes'
+
                  print '*: Exit'
                  opcion = raw_input('\nOption: ')
 
@@ -175,7 +177,7 @@ def admin(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_ssh,
                          raw_input(mensajeEnter)
                          break
 
-                 elif opcion == '3':       # Instalar en todos los nodos
+                 elif opcion == '3':       # Instalar en todos los nodos sin scamper
                      try:
                          lista_instalacion = [x for x in nodos_ssh if x not in nodos_funcionales and x not in nodos_en_instalacion]
 
@@ -193,6 +195,23 @@ def admin(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_ssh,
                          raw_input(mensajeEnter)
                          break
 
+                 elif opcion == '4':       # Instalar en todos los nodos
+                     try:
+                         lista_instalacion = [x for x in nodos_ssh]
+
+                         if lista_instalacion:
+                             if set(lista_instalacion) & set(nodos_f14):
+                                 sudoPassword = ingresarPassSudo()
+                             else:
+                                 sudoPassword = None
+                             instalarSoftware(slice_name, lista_instalacion, nodos_en_instalacion, nodos_ssh, nodos_funcionales, nodos_f14, sudoPassword)
+                         else:
+                             print 'No hay nodos en los que instalar software'
+
+                     except ErrorPlanetlab:
+                         print mensajeErrorConexion
+                         raw_input(mensajeEnter)
+                         break
                  elif opcion == '*':       # Volver
                      break
 
@@ -215,12 +234,11 @@ def admin(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_ssh,
                 if opcion == '1':    # Remove nodes without SSH
                     try:
                         # List of nodes without SSH access
-                        lista_nodos_comprobar = list(set(node_list) - set(nodos_ssh))
-                        node_list_to_remove = nodosNoFuncionales(slice_name, lista_nodos_comprobar)
-
+                        node_list_to_remove = list(set(node_list) - set(nodos_ssh))
                         # Remove selected nodes
                         removerNodos(api_server, auth, slice_name, node_list_to_remove)
                         print 'Removing...'
+						
                         if node_list_to_remove:
                             # Update list
                             node_list = list(set(node_list) - set(nodos_ssh))

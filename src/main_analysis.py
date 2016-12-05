@@ -24,11 +24,12 @@ Developers: Mauricio Anderson Ricci (b)
 
 from psycopg2 import connect, Error as DatabaseError
 
-from func_topology import programarResolucionAliases, obtenerEstado, darPrioridadNodos
+from func_topology import programarResolucionAliases, obtenerEstado
 from func_BD import conectar_BD, generar_ID_analisis, registrarAnalisis
 from func_admin import verNodos, confirmar
 from func_analysis import mostrarRegistro, cancelarAnalisis, almacenarMediciones, eliminarResultados, \
-elegirOrigen, elegirDestino, obtenerParametros, configuracionAnalisis, resumenConf, instalarAnalisis
+elegirOrigen, elegirDestino, obtenerParametros, configuracionAnalisis, resumenConf, instalarAnalisis, \
+instalarAnalisis_B2B, obtenerParametros_B2B
 
 mensajeErrorConexion = '\n--- Conexion Problem---\n'
 mensajeEnter = '\n Press Intro to continue \n'
@@ -60,10 +61,11 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
         print '1: View functional nodes'
         print '2: Summery of last explorations'
         print '3: New exploration'
-        print '4: Cancel exploration'
-        print '5: Stored exploration'
-        print '6: Alias resolution'
-        print '7: Delete data'
+        print '4: New Traceroutes B2B'
+        print '5: Cancel exploration'
+        print '6: Store'
+        print '7: Alias resolution'
+        print '8: Delete data'
         print '*: Exit'
         opcion = raw_input('\nOpcion: ')
         print '\n'
@@ -81,9 +83,9 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
                 raw_input(mensajeEnter)
 
         elif opcion == '2':         # Summery of last explorations
-            if not mostrarRegistro('almacenamiento', 'y'):
+            if not (mostrarRegistro('almacenamiento', 'y') or mostrarRegistro('almacenamiento', 'y', 'B2B')):
                 print 'Empty\n'
-            if not mostrarRegistro('almacenamiento', 'n'):
+            if not (mostrarRegistro('almacenamiento', 'n') or mostrarRegistro('almacenamiento', 'n', 'B2B')):
                 print 'Empty\n'
 
         elif opcion == '3':         # New exploration
@@ -91,6 +93,7 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
                 parametros = {}
                 parametros['usuario'] = auth.get('Username')
                 parametros['slice_name'] = slice_name
+                parametros['motivo'] = 'scamper'
 
                 # Select origin nodes from where exploration will run
                 parametros['nodos_origen'] = elegirOrigen(api_server, auth, nodos_funcionales)
@@ -117,7 +120,39 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
                 print mensajeErrorConexion
                 raw_input(mensajeEnter)
 
-        elif opcion == '4':         # Cancel exploration
+        elif opcion == '4':         # B2B new exploration
+
+            try:
+                parametros = {}
+                parametros['usuario'] = auth.get('Username')
+                parametros['slice_name'] = slice_name
+                parametros['motivo'] = 'B2B'
+
+                parametros['nodos_origen'] = elegirOrigen(api_server, auth, nodos_funcionales)
+                if parametros.get('nodos_origen'):
+                    parametros['nodos_destino'] = elegirDestino(api_server, auth, parametros)
+                    if parametros.get('nodos_destino'):                    
+                        generar_ID_analisis(parametros)
+                        obtenerParametros_B2B(parametros)
+                        parametros['descripcion'] = raw_input('Description: \t')
+                        resumenConf(parametros)
+                        if confirmar('Excecute exploration'):
+                            # Transfer files and start it
+                            instalarAnalisis_B2B(parametros)
+                            # Exploration registered
+                            registrarAnalisis(parametros)
+
+            except KeyboardInterrupt:
+                pass
+
+            except ErrorPlanetlab:
+                print mensajeErrorConexion
+                raw_input(mensajeEnter)
+
+            break
+
+
+        elif opcion == '5':         # Cancel exploration
             if mostrarRegistro('almacenamiento', 'n'):
                 while True:
                     try:
@@ -132,8 +167,8 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
             else:
                 print 'No running exploration'
 
-        elif opcion == '5':         # Stored exploration
-            if mostrarRegistro('almacenamiento', 'n'):
+        elif opcion == '6':         # Stored exploration
+            if mostrarRegistro('almacenamiento', 'n') or mostrarRegistro('almacenamiento', 'n', 'B2B'):
                 while True:
                     try:
                         ID = raw_input('\nEnter ID:\t')
@@ -147,9 +182,7 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
             else:
                 print 'No running exploration'
 
-        elif opcion == '6':         # Alias resolution
-
-            darPrioridadNodos(nodos_midar)
+        elif opcion == '7':         # Alias resolution
 
             if nodos_midar:
                 while True:
@@ -179,6 +212,8 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
                             elif estado == '4':
                                 print 'Alias previously resolved\n'
 
+                            elif estado == '9':
+                                print 'Alias resolution is not implemented for this type of exploration\n'
                             else:
                                 print 'ID not registered'
 
@@ -188,7 +223,7 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
             else:
                 print 'No MIDAR nodes available'
 
-        elif opcion == '7':         # Delete data
+        elif opcion == '8':         # Delete data
              while True:
                  print color.UNDERLINE + 'Main menu: Explorations: Delete data:' + color.END
                  print '1: Delete exploration'

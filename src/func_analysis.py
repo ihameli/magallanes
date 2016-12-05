@@ -34,7 +34,7 @@ from subprocess import PIPE, Popen, call
 from netaddr import *
 from getpass import getpass
 
-from func_BD import conectar_BD, almacenar_mediciones_BD
+from func_BD import conectar_BD, almacenar_mediciones_BD, almacenar_mediciones_B2B_BD
 from func_admin import verNodos, confirmar
 
 mensajeErrorConexion = '\n--- Conexion Problem---\n'
@@ -144,14 +144,14 @@ def elegirDestino(api_server, auth, parametros):
     while True: # Selection the kind of target
 
         print color.UNDERLINE + '\n Select the kind of target:' + color.END
-        print '1: Target: Planetlab \t Random'
-        print '2: Target: Planetlab \t Specific'
+        print '1: Target: Planetlab \t Random   \t (only scamper)'
+        print '2: Target: Planetlab \t Specific \t (only scamper)'
         print '3: Target: Internet  \t Random'
         print '4: Target: Internet  \t Specific'
         opcion = raw_input('\nOption: ')
         print '\n'
 
-        if opcion == '1': # Planetlab - Random
+        if opcion == '1' and parametros.get('motivo') != 'B2B': # Planetlab - Random
 
             cant_max = api_server.GetSlices(auth, {}, ['max_nodes']).pop(0)
             cant_max = cant_max.get('max_nodes')
@@ -204,7 +204,7 @@ def elegirDestino(api_server, auth, parametros):
 
             break
 
-        elif opcion == '2': # Planetlab - Random
+        elif opcion == '2' and parametros.get('motivo') != 'B2B': # Planetlab - Random
 
             nodos_id = []
             print 'Entry ID of desteny nodes (* to finish):'
@@ -244,19 +244,23 @@ def elegirDestino(api_server, auth, parametros):
         elif opcion == '3': # Internet - Random
 
             # Max number of IP to make traceroute
-            cant_max = 500 * 1000
+            if parametros.get('motivo') == 'scamper':
+                cant_max = 500 * 1000
 
-            while True:
-                cantidad = raw_input('\nSelect the number of destinations addresses (0 to finish): ')
-                if cantidad.isdigit():
-                    cantidad = int(cantidad)
-                    if 0 < cantidad <= cant_max:
-                        break
+                while True:
+                    cantidad = raw_input('\nSelect the number of destinations addresses (0 to finish): ')
+                    if cantidad.isdigit():
+                        cantidad = int(cantidad)
+                        if 0 < cantidad <= cant_max:
+                            break
+                        else:
+                            print '\nValue out of range: Min=1, Max=', cant_max
                     else:
-                        print '\nValue out of range: Min=1, Max=', cant_max
-                else:
-                    print '\nWrong'
+                        print '\nWrong'
 
+            elif parametros.get('motivo') == 'B2B':
+                cant_max = 1
+                cantidad = cant_max
             while True:
                 opcion = raw_input('\nSame destinations in each monitor (y/n) [N]:\t')
                 if len(opcion) == 0:
@@ -360,6 +364,8 @@ def elegirDestino(api_server, auth, parametros):
                         if response == 0:
                             nodos_destino.append(dir_ip)
                             print '\tSite added'
+                            if parametros.get('motivo') == 'B2B':
+                                break
                         else:
                             print '\tSite not respond to ping'
 
@@ -504,6 +510,61 @@ def instalarAnalisis(parametros, script):
     return None
 
 
+def instalarAnalisis_B2B(parametros):
+    """ Copy the exploration script the nodes in nodos_analisis to perform B2B analysis """
+
+    slice_name = parametros.get('slice_name')
+    nodos = parametros.get('nodos_origen')
+    nodos_instalados = []
+    script = dirname(abspath(__file__)) + '/pamplona_MySQL.py'
+
+    IPdestino = parametros.get('nodos_destino')
+
+    print '\nCreating exploration...\n'
+    for n, nodo in enumerate(nodos):
+        num_intentos = 3
+        intento = 1
+        instalacion = False
+
+        while True:
+            # 1. Transferir script
+            carpetaDestino = '/home/%s/pamplona/' % (slice_name)
+            proceso = Popen(['parallel-scp','-H', nodo, '-l', slice_name, script, carpetaDestino], stdout=PIPE)
+            salida = proceso.stdout.read()
+            proceso.stdout.close()
+
+            if '[SUCCESS]' in salida:
+                # 2. Ejecutar scrip con los parametros de entrada correspondientes
+                comando = 'ssh -f -l %s %s \"cd ~/pamplona/ ;nohup sudo python pamplona_MySQL.py %s %s %s %s > /dev/null  2> /dev/null\"' % (slice_name, nodo, parametros.get('n_hops'), IPdestino[n][0], parametros.get('duracion_traceroutes'), slice_name)
+                if call([comando], shell=True) == 0:
+                    instalacion = True
+                    break
+                else:
+                    break
+
+            else:
+                intento += 1
+                if intento > num_intentos:
+                    break
+                else:
+                    sleep(2)
+
+        if instalacion:
+            nodos_instalados.append(nodo)
+            print '\t',(n+1),'/', (len(nodos)),', ', nodo, ':\t SUCCESS'
+        else:
+            print '\t',(n+1),'/', (len(nodos)),', ', nodo, ':\t ERROR'
+
+        try:
+            remove(archivo_direcciones)
+        except:
+            pass
+
+    parametros['nodos_origen'] = nodos_instalados
+
+    return None
+    
+    
 def generar_lista_ip(nodos_destino):
     """ Generate a list of IP given a list of hostname  """
 
@@ -526,25 +587,26 @@ def resumenConf(parametros):
     print color.UNDERLINE + '\nSummary:' + color.END
     print 'ID exploration:\t\t', parametros.get('analysis_id')
     print 'Description:\t\t', parametros.get('descripcion')
-    print 'Period:\t\t\t', parametros.get('periodo_traceroutes'),'ss'
+    if parametros.get('trace_type') != 'B2B': print 'Period:\t\t\t', parametros.get('periodo_traceroutes'),'ss'
     print 'Duration:\t\t', str(int(parametros.get('duracion_traceroutes'))/3600), 'hh'
     print '# Monitors:\t\t', len(parametros.get('nodos_origen'))
     print '# Target:\t\t', len(parametros.get('nodos_destino')[0])
-    print '# Ping:\t\t\t', parametros.get('ping_ejecutar')
+    if parametros.get('trace_type') != 'B2B': print '# Ping:\t\t\t', parametros.get('ping_ejecutar')
 
     return None
 
 
-def mostrarRegistro(accion, opcion):
+def mostrarRegistro(accion, opcion, motivo = 'scamper'):
     """ Brief summary of the previous explorations """
 
     try:
         conexion = connect(conectar_BD())
         cursor = conexion.cursor()
 
-        if accion == 'almacenamiento':
-            cursor.execute('SELECT analysis_id, usr, description, TS, TS_epoch, duration, stored, topology_state FROM analysis where stored=\'' + str(opcion).lower() + '\' order by analysis_id;')
-
+        if accion == 'almacenamiento' and motivo == 'scamper':
+            cursor.execute('SELECT analysis_id, usr, description, TS, TS_epoch, duration, stored, topology_state FROM analysis where stored=\'' + str(opcion).lower() + '\' and trace_type<>\'B2B\' order by analysis_id;')
+        elif accion == 'almacenamiento' and motivo == 'B2B':
+            cursor.execute('SELECT analysis_id, usr, description, TS, TS_epoch, duration, stored, topology_state FROM analysis where stored=\'' + str(opcion).lower() + '\' and trace_type=\'B2B\' order by analysis_id;')
         elif accion == 'resolucion_topologia':
             cursor.execute('SELECT analysis_id, usr, description, TS, TS_epoch, duration, stored, topology_state FROM analysis where topology_state=\'' + str(opcion).lower() + '\' order by analysis_id;')
 
@@ -585,38 +647,43 @@ def tiempoPendiente(ID):
 
         ID = str(ID)
 
-        cursor.execute('SELECT TS_epoch, duration, ping_type, period, gap_limit, pps, num_dest FROM analysis where analysis_id='+ID+';')
+        cursor.execute('SELECT TS_epoch, duration, ping_type, period, gap_limit, pps, num_dest, trace_type FROM analysis where analysis_id='+ID+';')
 
         x = cursor.fetchall()[0]
 
         inicio = int(x[0])
         duracion = int(x[1])
         ping = x[2]
+        trace_type = x[7].upper()
 
-        if ping != None: # If round of ping is selected then sum an hour
-            ronda_ping = 3600
+        if trace_type == 'B2B':
+            t_falta = (inicio + duracion) - int(time())
+            
         else:
-            ronda_ping = 0
-
-        periodo_ingresado = int(x[3])
-
-        gap_limit = int(x[4])
-        pps = int(x[5])
-        cant_destinos = int(x[6])
-
-        paquetes_por_trace = 8                          # Estimador
-        porcentaje_destinos_incompletos = 0.5  * 1.0    # Estimador
-
-        cantidad_media_paquetes_por_trace = (gap_limit * porcentaje_destinos_incompletos) + paquetes_por_trace
-
-        cantidad_paquetes_total = cantidad_media_paquetes_por_trace * cant_destinos
-
-        periodo_estimado = int(cantidad_paquetes_total / pps)
-
-        periodo_trace = max(periodo_ingresado, periodo_estimado)
-
-        t_falta = (inicio + duracion + periodo_trace + ronda_ping) - int(time())
-
+            if ping != None: # If round of ping is selected then sum an hour
+                ronda_ping = 3600
+            else:
+                ronda_ping = 0
+    
+            periodo_ingresado = int(x[3])
+    
+            gap_limit = int(x[4])
+            pps = int(x[5])
+            cant_destinos = int(x[6])
+    
+            paquetes_por_trace = 8                          # Estimador
+            porcentaje_destinos_incompletos = 0.5  * 1.0    # Estimador
+    
+            cantidad_media_paquetes_por_trace = (gap_limit * porcentaje_destinos_incompletos) + paquetes_por_trace
+    
+            cantidad_paquetes_total = cantidad_media_paquetes_por_trace * cant_destinos
+    
+            periodo_estimado = int(cantidad_paquetes_total / pps)
+    
+            periodo_trace = max(periodo_ingresado, periodo_estimado)
+    
+            t_falta = (inicio + duracion + periodo_trace + ronda_ping) - int(time())
+    
         if t_falta > 0:
             d = int(t_falta/86400)
             h = int((t_falta-(d*86400))/3600)
@@ -626,11 +693,12 @@ def tiempoPendiente(ID):
         else:
             tiempo = 'Finalizado'
 
-        cursor.close()
-        conexion.close()
-
     except:
         pass
+
+    finally:
+        cursor.close()
+        conexion.close()
 
     return tiempo
 
@@ -643,9 +711,10 @@ def almacenarMediciones(auth, slice_name, node_list, ID):
         cursor = conexion.cursor()
 
         # Load data of exploration to process
-        cursor.execute('SELECT analysis_id, TS_epoch, duration, nodes, stored, nodes_stored FROM analysis where analysis_id=%s;' % ID)
+        cursor.execute('SELECT analysis_id, TS_epoch, duration, nodes, stored, nodes_stored, trace_type FROM analysis where analysis_id=%s;' % ID)
         x = cursor.fetchall()[0]
 
+        trace_type = x[6].upper()
         if x[4] == 'n' and tiempoPendiente(str(ID)) == 'Finalizado':
 
             nodos_analisis = x[3].split('|')
@@ -656,15 +725,28 @@ def almacenarMediciones(auth, slice_name, node_list, ID):
             nodos_almacenar = [nodo for nodo in nodos_analisis if (nodo not in nodos_ya_almacenados)]
 
             try:
-                if almacenar_mediciones_BD(auth, slice_name, str(ID), nodos_almacenar, ingresarPassSudo()):
-                    print 'The results of all nodes have been stored \n'
+                if trace_type != 'B2B':
+                    if almacenar_mediciones_BD(auth, slice_name, str(ID), nodos_almacenar, ingresarPassSudo()):
+                        print 'The results of all nodes have been stored \n'
+                    else:
+                        print 'There have been pending results\n'
                 else:
-                    print 'There have been pending results\n'
-
+                    if almacenar_mediciones_B2B_BD(auth, slice_name, str(ID), nodos_almacenar):
+                        print 'The results of all nodes have been stored \n'
+                    else:
+                        print 'There have been pending results\n'
+                        
                 cursor.execute('SELECT nodes, nodes_stored FROM analysis WHERE analysis_id=' + str(ID) + ';')
                 aux = cursor.fetchall()[0]
-                nodos_experimento = aux[0].split('|')
-                nodos_almacenados = aux[1].split('|')
+                try:
+                    nodos_experimento = aux[0].split('|')
+                except:
+                    nodos_experimento = ''
+
+                try:
+                    nodos_almacenados = aux[1].split('|')
+                except:
+                    nodos_almacenados = ''
 
                 aux = [x for x in nodos_experimento if (x in node_list) and (x not in nodos_almacenados)]
 
@@ -672,18 +754,26 @@ def almacenarMediciones(auth, slice_name, node_list, ID):
                     while True:
                         opcion = raw_input(str(len(aux)) + ' nodes without stored its results. do you want to discard their data? (y/n):\t')
                         if opcion.upper() == 'Y':
-                            # Seteo el analisis como ya almacenado y Elimino los nodos de la tabla Nodes_working
+                            # Seteo el analisis como ya almacenado y elimino los nodos de la tabla Nodes_working
                             cursor.execute('UPDATE analysis SET stored=\'y\' WHERE analysis_id=' + str(ID) + ';')
                             cursor.execute('DELETE FROM nodes_working WHERE analysis_id=' + str(ID) + ';')
                             conexion.commit()
 
-                            # Remove exploration folder in remote nodes
-                            for nodo in aux:
-                                command = 'parallel-ssh -H ' + str(nodo) + ' -l ' + slice_name + ' ' + 'sudo rm /home/'+slice_name+'/'+auth.get('Username')+'/*_'+str(ID)+'*'
-                                proceso = Popen([command], shell=True, stdout=PIPE)
-                                basura = proceso.stdout.readlines()
-                                proceso.stdout.close()
-                            #
+                            # Remove data in nodes
+                            if trace_type != 'B2B':                                
+
+                                for nodo in aux:
+                                    command = 'parallel-ssh -H ' + str(nodo) + ' -l ' + slice_name + ' ' + 'sudo rm /home/'+slice_name+'/'+auth.get('Username')+'/*_'+str(ID)+'*'
+                                    proceso = Popen([command], shell=True, stdout=PIPE)
+                                    basura = proceso.stdout.readlines()
+                                    proceso.stdout.close()
+                            else:
+                                for nodo in aux:
+                                    command = 'parallel-ssh -H ' + str(nodo) + ' -l ' + slice_name + ' ' + 'sudo rm /home/'+slice_name+'/pamplona/resultados.tar.gz'
+                                    proceso = Popen([command], shell=True, stdout=PIPE)
+                                    basura = proceso.stdout.readlines()
+                                    proceso.stdout.close()
+
 
                             break
                         elif opcion.upper() == 'N':
@@ -691,7 +781,10 @@ def almacenarMediciones(auth, slice_name, node_list, ID):
                         else:
                             print 'Wrong'
                 else:
-                    cursor.execute('UPDATE analysis SET stored=\'y\', topology_state=\'0\' WHERE analysis_id=' + str(ID) + ';')
+                    if trace_type != 'B2B':
+                        cursor.execute('UPDATE analysis SET stored=\'y\', topology_state=\'0\' WHERE analysis_id=' + str(ID) + ';')
+                    else:
+                        cursor.execute('UPDATE analysis SET stored=\'y\', topology_state=\'9\' WHERE analysis_id=' + str(ID) + ';')
                     conexion.commit()
 
             except Exception as e:
@@ -707,10 +800,78 @@ def almacenarMediciones(auth, slice_name, node_list, ID):
     except DatabaseError as e:
         print 'Error: %s' % str(e)
 
+    except Exception as e:
+        print 'ERROR:\n %s' % str(e)
+
 
     return None
 
 
+def obtenerParametros_B2B(parametros):
+    """ Solicito los parametros restantes para ejecutar los exploracion B2B """
+
+    # Number of packet to use in the B2B traceroute
+    try:
+        while True:
+            opcion = raw_input('\npackets [20]: \t')
+            if len(opcion) == 0:
+                parametros['n_hops'] = 20
+                break
+            elif 1 <= int(opcion) <= 168:
+                parametros['n_hops'] = int(opcion)
+                break
+            else:
+                print 'Wrong: 1 <= duration <= 168'
+    except:
+        print 'Wrong'
+
+
+    # Period of traceroutes
+    parametros['periodo_traceroutes'] = None
+
+    # Duration
+    #tiempo = 1 * 3600 * 24
+    #parametros['duracion_traceroutes'] = str(tiempo)
+
+    try:
+        while True:
+            opcion = raw_input('Duration in hours [24]: \t')
+            if len(opcion) == 0:
+                parametros['duracion_traceroutes'] = 24 * 3600
+                break
+            elif 1 <= int(opcion) <= 168:
+                parametros['duracion_traceroutes'] = int(opcion) * 3600
+                break
+            else:
+                print 'Wrong: 1 <= duration <= 168'
+    except:
+        print 'Wrong'
+
+    # Probe type
+    parametros['trace_type'] = 'B2B'
+
+    # PPS
+    parametros['pps'] = None
+
+    # GAPLIMIT
+    parametros['gaplimit'] = None
+
+    # WAIT
+    parametros['wait'] = None
+
+    ### Recalculation of initial TTL
+    parametros['recalcular_TTL'] = None
+    parametros['tiempo_recalculo_TTL'] = None
+
+    ### Ping
+    parametros['ping_ejecutar'] = None
+    parametros['ping_type'] = None
+    parametros['ping_ttl'] = None
+    parametros['ping_sent'] = None
+
+    return None  
+
+    
 def obtenerParametros(parametros):
     """ Solicito los parametros restantes para ejecutar los traceroutes """
 
@@ -894,38 +1055,42 @@ def cancelarAnalisis(user, slice_name, node_list, ID):
         conexion = connect(conectar_BD())
         cursor = conexion.cursor()
 
-        cursor.execute('SELECT analysis_id, nodes, nodes_stored FROM analysis WHERE analysis_id='+str(ID)+' AND stored=\'n\';')
+        cursor.execute('SELECT analysis_id, nodes, nodes_stored, trace_type FROM analysis WHERE analysis_id='+str(ID)+' AND stored=\'n\';')
+        x = cursor.fetchall()[0]
 
-        try:
-            x = cursor.fetchall()[0]
+        trace_type = x[3].upper()
 
-            analysis_id = x[0]
-            nodos_analisis = x[1].split('|')
+        if trace_type != 'B2B':
             try:
-                nodos_ya_almacenados = x[2].split('|')
-            except:
-                nodos_ya_almacenados = []
-
-            nodos_eliminar = [nodo for nodo in nodos_analisis if (nodo in node_list) and (nodo not in nodos_ya_almacenados)]
-
-        except DatabaseError:
-            print '\nWrong ID\n'
-
-        except IndexError:
-            print '\nWrong ID\n'
-
+                analysis_id = x[0]
+                nodos_analisis = x[1].split('|')
+                try:
+                    nodos_ya_almacenados = x[2].split('|')
+                except:
+                    nodos_ya_almacenados = []
+    
+                nodos_eliminar = [nodo for nodo in nodos_analisis if (nodo in node_list) and (nodo not in nodos_ya_almacenados)]
+    
+            except DatabaseError:
+                print '\nWrong ID\n'
+    
+            except IndexError:
+                print '\nWrong ID\n'
+    
+            else:
+                if confirmar('Cancel exploration'):
+                    cursor.execute('DELETE FROM analysis CASCADE WHERE analysis_id=' + str(ID) + ';')
+                    cursor.execute('DELETE FROM nodes_working WHERE analysis_id=' + str(ID) + ';')
+                    lista_nodos = '"' + ' '.join(nodos_eliminar) + '"'
+                    command = 'parallel-ssh -H ' + lista_nodos + ' -l ' + slice_name + ' ' + 'sudo rm /home/'+slice_name+'/'+user+'/*_'+str(ID)+'*'
+                    proceso = Popen([command], shell=True, stdout=PIPE)
+                    salida = proceso.stdout.read()
+                    proceso.stdout.close()
+                    print '\n',salida
+    
+                    conexion.commit()
         else:
-            if confirmar('Cancel exploration'):
-                cursor.execute('DELETE FROM analysis CASCADE WHERE analysis_id=' + str(ID) + ';')
-                cursor.execute('DELETE FROM nodes_working WHERE analysis_id=' + str(ID) + ';')
-                lista_nodos = '"' + ' '.join(nodos_eliminar) + '"'
-                command = 'parallel-ssh -H ' + lista_nodos + ' -l ' + slice_name + ' ' + 'sudo rm /home/'+slice_name+'/'+user+'/*_'+str(ID)+'*'
-                proceso = Popen([command], shell=True, stdout=PIPE)
-                salida = proceso.stdout.read()
-                proceso.stdout.close()
-                print '\n',salida
-
-                conexion.commit()
+            print 'It is not possible cancel a traceroutes B2B exploration'
 
         cursor.close()
         conexion.close()
@@ -1247,5 +1412,4 @@ def configuracionAnalisis(parametros):
     lista_comandos.append('echo "    " >> ' + analisis_script)
 
     return '; '.join(lista_comandos)
-
 
