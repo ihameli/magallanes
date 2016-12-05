@@ -362,23 +362,23 @@ def obtenerLocalizacionRouters(ID):
         RID = cursor.fetchall()
         cursor.close()
         conexion.close()
-		
+        
     except Exception as e:
         print '\nERROR: %s' % str(e)
 
     else:
-	    # Connecting to MaxMind DB
+        # Connecting to MaxMind DB
         reader = geoip2_reader(direccion_geolite)
-		datos = set()
+        datos = set()
         N = int(len(RID) / 1000) + 1
         n = 1
-		
+        
         # Getting an interface for each router ID
         for r in RID:
             n = n + 1
             x  = r[0]
             IP = r[1]
-			
+            
             try:
                 # Taking an IP to get its location
                 response = reader.city(IP)
@@ -405,7 +405,7 @@ def obtenerLocalizacionRouters(ID):
 
                 try:
                     region = str(response.subdivisions.most_specific.name)
-					region = region.translate(None, "'")
+                    region = region.translate(None, "'")
                 except UnicodeEncodeError:
                     region = None
 
@@ -416,7 +416,7 @@ def obtenerLocalizacionRouters(ID):
 
                 try:
                     city = str(response.city.name)
-					city = city.translate(None, "'")
+                    city = city.translate(None, "'")
                 except UnicodeEncodeError:
                     city = None
 
@@ -430,40 +430,40 @@ def obtenerLocalizacionRouters(ID):
                 except:
                     longitude = 0
 
-				localizacion = (continent, cod_continent, country, cod_country, region, cod_region, city, latitude, longitude, x)
+                localizacion = (continent, cod_continent, country, cod_country, region, cod_region, city, latitude, longitude, x)
 
-				datos.add(localizacion)
-				
+                datos.add(localizacion)
+                
             except Exception as e:
                 conexion.rollback()
 
             else:
                 conexion.commit()
-		
-		reader.close()
-		
-		try:
+        
+        reader.close()
+        
+        try:
             if len(datos) > 0:
                 conexion = connect(conectar_BD())
                 cursor = conexion.cursor()
                 
-				N = len(datos)
+                N = len(datos)
                 n = 1
-				datos = list(datos)
+                datos = list(datos)
                 for x in datos:
-					n = n + 1
+                    n = n + 1
                     query = "UPDATE routers SET (continent, cod_continent, country, cod_country, region, cod_region, city, latitude, longitude) = ('%s', '%s', '%s', '%s', '%s', '%s', '%s', %s, %s) WHERE analysis_id=%s and router_id=%s;" % (ID, x) 
                     cursor.execute(query)
                     if (n % 100) == 0: conexion.commit() 
                 conexion.commit()
                 
-				cursor.close()
+                cursor.close()
                 conexion.close()
 
         except Exception as e:
             print str(e)
             pass
-			
+            
     finally:
         stdout.write('\r\tGetting location of routers: Done')
         stdout.flush()
@@ -883,10 +883,10 @@ def almacenarResultados(ID, MIDAR_folder == 1):
         cursor = conexion.cursor()
 
         # Find MIDAR folder
-		if MIDAR_folder == 1:
-			archivo_resultados = [x for x in listdir('%s/temp' % directorio) if 'resultados__' in x]
-		else:
-			archivo_resultados = [x for x in listdir('%s/temp' % directorio)]
+        if MIDAR_folder == 1:
+            archivo_resultados = [x for x in listdir('%s/temp' % directorio) if 'resultados__' in x]
+        else:
+            archivo_resultados = [x for x in listdir('%s/temp' % directorio)]
 
 
         # Analysis each result file
