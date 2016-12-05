@@ -244,19 +244,19 @@ def elegirDestino(api_server, auth, parametros):
         elif opcion == '3': # Internet - Random
 
             # Max number of IP to make traceroute
-			if parametros.get('motivo') == 'scamper':
+            if parametros.get('motivo') == 'scamper':
                 cant_max = 500 * 1000
 
-				while True:
-					cantidad = raw_input('\nSelect the number of destinations addresses (0 to finish): ')
-					if cantidad.isdigit():
-						cantidad = int(cantidad)
-						if 0 < cantidad <= cant_max:
-							break
-						else:
-							print '\nValue out of range: Min=1, Max=', cant_max
-					else:
-						print '\nWrong'
+                while True:
+                    cantidad = raw_input('\nSelect the number of destinations addresses (0 to finish): ')
+                    if cantidad.isdigit():
+                        cantidad = int(cantidad)
+                        if 0 < cantidad <= cant_max:
+                            break
+                        else:
+                            print '\nValue out of range: Min=1, Max=', cant_max
+                    else:
+                        print '\nWrong'
 
             elif parametros.get('motivo') == 'B2B':
                 cant_max = 1
@@ -364,7 +364,7 @@ def elegirDestino(api_server, auth, parametros):
                         if response == 0:
                             nodos_destino.append(dir_ip)
                             print '\tSite added'
-							if parametros.get('motivo') == 'B2B':
+                            if parametros.get('motivo') == 'B2B':
                                 break
                         else:
                             print '\tSite not respond to ping'
@@ -563,8 +563,8 @@ def instalarAnalisis_B2B(parametros):
     parametros['nodos_origen'] = nodos_instalados
 
     return None
-	
-	
+    
+    
 def generar_lista_ip(nodos_destino):
     """ Generate a list of IP given a list of hostname  """
 
@@ -871,7 +871,7 @@ def obtenerParametros_B2B(parametros):
 
     return None  
 
-	
+    
 def obtenerParametros(parametros):
     """ Solicito los parametros restantes para ejecutar los traceroutes """
 
@@ -1412,5 +1412,4 @@ def configuracionAnalisis(parametros):
     lista_comandos.append('echo "    " >> ' + analisis_script)
 
     return '; '.join(lista_comandos)
-
 
