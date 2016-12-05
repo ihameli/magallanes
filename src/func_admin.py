@@ -747,7 +747,8 @@ def comprobar_thread(x,slice_name,nodos_funcionales,nodos_ssh,nodos_f14,nodos_mi
 def comprobar_funcionalidad(slice_name, node):
     """ Check if a node has SSH access and Scamper installed """
 
-    proceso = Popen(['parallel-ssh','-P','-t', config['ssh_time_out'], '-H', node, '-l', slice_name, 'whereis scamper; cat /etc/fedora-release; whereis mper; if [ -d "/home/'+slice_name+'/'+config['midar_folder']+'" ]; then echo "Y"; else echo "N"; fi'], stdout=PIPE)
+    proceso = Popen(['parallel-ssh', '-O', 'StrictHostKeyChecking=no', '-O', 'UserKnownHostsFile=/dev/null','-P','-t', config['ssh_time_out'], '-H', node, '-l', slice_name, 'whereis scamper; cat /etc/fedora-release; whereis mper; if [ -d "/home/'+slice_name+'/'+config['midar_folder']+'" ]; then echo "Y"; else echo "N"; fi'], stdout=PIPE)
+    #proceso = Popen(['parallel-ssh','-P','-t', config['ssh_time_out'], '-H', node, '-l', slice_name, 'whereis scamper; cat /etc/fedora-release; whereis mper; if [ -d "/home/'+slice_name+'/'+config['midar_folder']+'" ]; then echo "Y"; else echo "N"; fi'], stdout=PIPE)
     salida = proceso.stdout.readlines()
     proceso.stdout.close()
 
