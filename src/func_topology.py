@@ -873,7 +873,7 @@ def descargarResultados(slice_name, midar_parametros):
     return resultado
 
 
-def almacenarResultados(ID, MIDAR_folder == 1):
+def almacenarResultados(ID, MIDAR_folder = 1):
     """ Store results """
 
     try:
