@@ -93,7 +93,7 @@ def analisis(api_server, auth, slice_name, node_list, nodos_funcionales, nodos_s
                 parametros = {}
                 parametros['usuario'] = auth.get('Username')
                 parametros['slice_name'] = slice_name
-				parametros['motivo'] = 'scamper'
+                parametros['motivo'] = 'scamper'
 
                 # Select origin nodes from where exploration will run
                 parametros['nodos_origen'] = elegirOrigen(api_server, auth, nodos_funcionales)
