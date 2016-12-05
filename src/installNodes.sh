@@ -3,13 +3,14 @@
 # Varibles
 SCAMPER='scamper-cvs-20141101.tar.gz'
 SCAMPER_FOLDER='scamper-cvs-20141101'
-MIDAR='midar-0.5.0.tar.gz'
-MIDAR_FOLDER='midar-0.5.0'
+MIDAR='midar-0.6.0.tar.gz'
+MIDAR_FOLDER='midar-0.6.0'
 MPER='mper-0.4.1.tar.gz'
 MPER_FOLDER='mper-0.4.1'
 RBMPERIO='rb-mperio-0.3.3.gem'
 ARKUTIL='arkutil-0.13.5.gem'
 ZLIB='zlib-devel-1.2.5-2.fc14.i686.rpm'
+PARIS='paris-traceroute-0.92-dev.tar'
 
 # Deleting previous files
 sudo rm $SCAMPER
@@ -21,6 +22,7 @@ sudo rm $ZLIB
 sudo rm instalacion.log fedora.repo fedora-updates.repo fedora-updates-testing.repo  
 sudo rm -drf $SCAMPER_FOLDER
 sudo rm -drf $MPER_FOLDER
+sudo rm $PARIS
 
 # BEGINNING
 echo "BEGIN" > instalacion.log
@@ -96,39 +98,121 @@ then
 	sudo rm $ZLIB
 
 	# MPER
-	tar zxvf ~/filesToInstall.tar.gz $MPER
-	tar xzvf ~/$MPER
-	cd ~/$MPER_FOLDER/
-	sudo ./configure
-	sudo make
-	sudo make install
-	cd ~/
 	if [ -f /usr/local/bin/mper ];
 	then	
 		echo "  MPER: CORRECT" >> instalacion.log
-		sudo rm ~/$MPER
-		sudo rm -drf ~/$MPER_FOLDER
 	else
-		echo "  MPER: FAILED" >> instalacion.log
+		tar zxvf ~/filesToInstall.tar.gz $MPER
+		tar xzvf ~/$MPER
+		cd ~/$MPER_FOLDER/
+		sudo ./configure
+		sudo make
+		sudo make install
+		cd ~/
+		if [ -f /usr/local/bin/mper ];
+		then	
+			echo "  MPER: CORRECT" >> instalacion.log
+			sudo rm ~/$MPER
+			sudo rm -drf ~/$MPER_FOLDER
+		else
+			echo "  MPER: FAILED" >> instalacion.log
+		fi
 	fi
 
 	# MIDAR
-	tar zxvf ~/filesToInstall.tar.gz $MIDAR
-	tar xzvf ~/$MIDAR
-	cd ~/$MIDAR_FOLDER/
-	sudo ./configure
-	sudo make
-	cd ~/
 	if [ -f ~/$MIDAR_FOLDER/midar/midar-full ];
 	then	
 		echo "  MIDAR: CORRECT" >> instalacion.log
-		sudo rm ~/$MIDAR
 	else
-		echo "  MIDAR: FAILED" >> instalacion.log
+		sudo rm -drf ~/$MIDAR_FOLDER
+		tar zxvf ~/filesToInstall.tar.gz $MIDAR
+		tar xzvf ~/$MIDAR
+		cd ~/$MIDAR_FOLDER/
+		sudo ./configure
+		sudo make
+		cd ~/
+		if [ -f ~/$MIDAR_FOLDER/midar/midar-full ];
+		then	
+			echo "  MIDAR: CORRECT" >> instalacion.log
+			sudo rm ~/$MIDAR
+		else
+			echo "  MIDAR: FAILED" >> instalacion.log
+		fi
 	fi
+
 else
 	echo "  IS NOT FEDORA 14" >> instalacion.log
 fi
+
+# MySQL
+echo "MySQL" >> instalacion.log
+sudo yum install -y --nogpgcheck mysql-server 
+if [ -f /usr/bin/mysql ]; 
+then 
+	echo "  CORRECT" >> instalacion.log; 
+	sudo /sbin/chkconfig mysqld on 
+	sudo /etc/init.d/mysqld start
+else 
+	echo "  FAILED" >> instalacion.log
+fi
+
+# Paris Traceroute
+# http://pkgs.fedoraproject.org/repo/pkgs/paris-traceroute/paris-traceroute-0.92-dev.tar.gz/18643a62fdcabd038cdeb14b5cbedb8b/
+echo "Paris Traceroute" >> instalacion.log
+if [ -f /usr/local/bin/paris-traceroute ];
+then
+	echo "  Paris Traceroute: CORRECT" >> instalacion.log
+else
+	sudo yum install -y autoconf git make
+	sudo yum install -y --nogpgcheck git make libtool libc6-dev
+
+	tar zxvf ~/filesToInstall.tar.gz $PARIS
+	tar xvf ~/$PARIS
+	cd paris-traceroute-current
+	./autogen.sh
+	./configure
+	sudo make
+	sudo make install
+
+	if [ -f /usr/local/bin/paris-traceroute ];
+	then
+		echo "  Paris Traceroute: CORRECT" >> instalacion.log
+		sudo rm ~/$PARIS
+		sudo rm -drf ~/paris-traceroute-current
+	else
+		echo "  Paris Traceroute: FAILED" >> instalacion.log
+	fi
+fi
+
+# Pamplona
+echo "Pamplona" >> instalacion.log
+if [ -d ~/pamplona ];
+then
+	echo "  Pamplona: CORRECT" >> instalacion.log
+else
+	mkdir ~/pamplona
+	cd ~/pamplona
+	wget https://www.tlm.unavarra.es/~santi/download/newtraceroute.tar.gz
+	tar xvzf newtraceroute.tar.gz
+	cd ~/
+
+	if [ -d ~/pamplona ];
+	then
+		echo "  Pamplona: CORRECT" >> instalacion.log
+		sudo rm ~/$PARIS
+		sudo rm -drf ~/paris-traceroute-current
+	else
+		echo "  Pamplona: FAILED" >> instalacion.log
+	fi
+fi
+
+# Create database
+echo "create database Pamplona" | mysql -u root --password=
+
+
+# MySQL-python
+sudo yum install -y --nogpgcheck MySQL-python
+
 
 # REMOVING INTALL FILES
 echo "END" >> instalacion.log
